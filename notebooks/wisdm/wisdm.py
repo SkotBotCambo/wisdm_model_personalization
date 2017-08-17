@@ -5,30 +5,30 @@ import scipy
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
-from wisdm.config import *
 
-WISDM_DIR = WISDM_DIR_1 # switch this at anytime to fix
+WISDM_DIR = None # switch this at anytime to fix
+WISDM_TRANSFORMED = None
 
-def get_features(dataset="v1.1"):
-	if dataset == "v1.1":
-		path = WISDM_TRANSFORMED_1
-	else:
-		path = WISDM_TRANSFORMED_2
-	data, metadata = loadarff(path)
-	data_df = pd.DataFrame.from_records(data, columns=metadata.names())
-	data_df.columns = [col.replace('"', '') for col in data_df.columns]
-	data_df["user"] = [x.decode("utf-8") for x in data_df["user"]]
-	return data_df
+data_df = None
+user_ids = None
 
-def get_data(dataset="v1.1"):
-	if dataset == "v1.1":
-		data_df = get_features()
-		user_ids = data_df['user'].unique()
-	else:
-		data_df = get_features(dataset="v2.0")
-		user_ids = data_df['user'].unique()
+def get_features():
+  path = WISDM_DIR + WISDM_TRANSFORMED
+  data, metadata = loadarff(path)
+  data_df = pd.DataFrame.from_records(data, columns=metadata.names())
+  data_df.columns = [col.replace('"', '') for col in data_df.columns]
+  data_df["user"] = [x.decode("utf-8") for x in data_df["user"]]
+  return data_df
+
+def get_data():
+	data_df = get_features()
+	user_ids = data_df['user'].unique()
 	return data_df, user_ids
-data_df, user_ids = get_data()
+
+def set_data():
+  global data_df
+  global user_ids
+  data_df, user_ids = get_data()
 
 def get_demographics_description():
 	with open(WISDM_DIR+"WISDM_at_v2.0_demographics_about.txt") as fIn:
