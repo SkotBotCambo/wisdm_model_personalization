@@ -5,7 +5,7 @@ import scipy
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
-from config import *
+from wisdm.config import *
 
 WISDM_DIR = WISDM_DIR_1 # switch this at anytime to fix
 
