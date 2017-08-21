@@ -9,8 +9,8 @@ dataset_path = "./datasets/"
 wisdm_v1_dataset_path = dataset_path + "WISDM_v1/"
 wisdm_v2_dataset_path = dataset_path + "WISDM_v2/"
 
-wisdm_transformed_v1 = "WISDM_ar_v1.1_transformed.arff"
-wisdm_transformed_v2 = "WISDM_at_v2.0_transformed.arff"
+wisdm_transformed_v1 = "WISDM_ar_v1.1_transformed_FIXED.arff"
+wisdm_transformed_v2 = "WISDM_at_v2.0_transformed_FIXED.arff"
 
 WISDM_DIR = wisdm_v1_dataset_path # switch this at anytime to fix
 WISDM_TRANSFORMED = wisdm_transformed_v1
