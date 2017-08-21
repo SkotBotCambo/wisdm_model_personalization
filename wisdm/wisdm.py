@@ -5,9 +5,15 @@ import scipy
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
+dataset_path = "./datasets/"
+wisdm_v1_dataset_path = dataset_path + "WISDM_v1/"
+wisdm_v2_dataset_path = dataset_path + "WISDM_v2/"
 
-WISDM_DIR = None # switch this at anytime to fix
-WISDM_TRANSFORMED = None
+wisdm_transformed_v1 = "WISDM_ar_v1.1_transformed.arff"
+wisdm_transformed_v2 = "WISDM_at_v2.0_transformed.arff"
+
+WISDM_DIR = wisdm_v1_dataset_path # switch this at anytime to fix
+WISDM_TRANSFORMED = wisdm_transformed_v1
 
 data_df = None
 user_ids = None
