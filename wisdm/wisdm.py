@@ -58,7 +58,7 @@ def set_data(version='1', make_compatible=False):
 	
 	data_df, user_ids = get_data()
 	if make_compatible:
-		data_df = make_labels_compatible
+		data_df = make_labels_compatible(data_df)
 
 def get_demographics_description():
 	with open(WISDM_DIR+"WISDM_at_v2.0_demographics_about.txt") as fIn:
