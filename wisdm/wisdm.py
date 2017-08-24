@@ -40,6 +40,8 @@ def get_features():
 
 def get_data():
 	data_df = get_features()
+	if 'UNIQUE_ID' in data_df.columns:
+		del data_df['UNIQUE_ID']
 	user_ids = data_df['user'].unique()
 	return data_df, user_ids
 
