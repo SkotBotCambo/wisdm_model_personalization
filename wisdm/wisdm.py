@@ -18,6 +18,16 @@ WISDM_TRANSFORMED = wisdm_transformed_v1
 data_df = None
 user_ids = None
 
+def make_labels_compatible(data_df, version):
+    if version is '2':
+        # remove rows with "LyingDown" as class
+        new_data_df = data_df[data_df['class'] != b"LyingDown"]
+        return new_data_df
+    elif (version is '1') or (version is '1.1'):
+        new_data_df = data_df.copy()
+        new_data_df['class'] = data_df['class'].replace(to_replace=[b'Upstairs', b'Downstairs'], value=[b'Stairs', b'Stairs'])
+        return new_data_df
+
 def get_features():
 	path = WISDM_DIR + WISDM_TRANSFORMED
 	data, metadata = loadarff(path)
@@ -31,10 +41,22 @@ def get_data():
 	user_ids = data_df['user'].unique()
 	return data_df, user_ids
 
-def set_data():
+def set_data(version='1', make_compatible=False):
 	global data_df
 	global user_ids
+	global WISDM_DIR
+	global WISDM_TRANSFORMED
+
+	if (version is '1') or (version is '1.1'):
+		WISDM_DIR = wisdm_v1_dataset_path
+		WISDM_TRANSFORMED = wisdm_transformed_v1
+	elif version is '2':
+		WISDM_DIR = wisdm_v2_dataset_path
+		WISDM_TRANSFORMED = wisdm_transformed_v2
+	
 	data_df, user_ids = get_data()
+	if make_compatible:
+		data_df = make_labels_compatible
 
 def get_demographics_description():
 	with open(WISDM_DIR+"WISDM_at_v2.0_demographics_about.txt") as fIn:
