@@ -18,12 +18,14 @@ WISDM_TRANSFORMED = wisdm_transformed_v1
 data_df = None
 user_ids = None
 
-def make_labels_compatible(data_df, version):
-    if version is '2':
+def make_labels_compatible(data_df):
+    class_labels = data_df['class'].unique()
+
+    if b'LyingDown' in class_labels:
         # remove rows with "LyingDown" as class
         new_data_df = data_df[data_df['class'] != b"LyingDown"]
         return new_data_df
-    elif (version is '1') or (version is '1.1'):
+    elif (b'Upstairs' in class_labels) or (b'Downstairs' in class_labels):
         new_data_df = data_df.copy()
         new_data_df['class'] = data_df['class'].replace(to_replace=[b'Upstairs', b'Downstairs'], value=[b'Stairs', b'Stairs'])
         return new_data_df
