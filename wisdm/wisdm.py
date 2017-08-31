@@ -4,6 +4,14 @@ from scipy.stats import randint as sp_randint
 import scipy
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold, StratifiedKFold, StratifiedShuffleSplit, ShuffleSplit
+from sklearn.cluster import KMeans
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.metrics import log_loss, brier_score_loss, accuracy_score, silhouette_samples, silhouette_score
+from scipy.stats import mode
+from collections import Counter
+
 import warnings
 
 dataset_path = "./datasets/"
@@ -152,7 +160,7 @@ def personal_model(active_features, active_labels, test_features=None, test_labe
 	scaler = StandardScaler().fit(active_features)
 	scaled_train_x = scaler.transform(active_features)
 
-	rfc_clf = wisdm.weka_RF()
+	rfc_clf = weka_RF()
 	rfc_clf.fit(scaled_train_x, active_labels)
 
 	if test_features is None:
@@ -167,7 +175,7 @@ def impersonal_model(impersonal_features, impersonal_labels, test_features=None,
 	scaler = StandardScaler().fit(impersonal_features)
 	scaled_train_x = scaler.transform(impersonal_features)
 	
-	rfc_clf = wisdm.weka_RF()
+	rfc_clf = weka_RF()
 	rfc_clf.fit(scaled_train_x, impersonal_labels)
 	
 	if test_features is None:
@@ -189,7 +197,7 @@ def impersonal_plus_personal_model(personal_features, personal_labels,
 	scaler = StandardScaler().fit(personal_plus_impersonal_features)
 	scaled_train_x = scaler.transform(personal_plus_impersonal_features)
 
-	rfc_clf = wisdm.weka_RF()
+	rfc_clf = weka_RF()
 	rfc_clf.fit(scaled_train_x, personal_plus_impersonal_labels)
 
 	if test_features is None:
@@ -203,7 +211,8 @@ def impersonal_plus_personal_model(personal_features, personal_labels,
 
 def cluster_plus_personal_model(personal_features, personal_labels,
 								  impersonal_features, impersonal_labels,
-								  test_features=None, test_labels=None, KM, clusters):
+								  KM, clusters,
+								  test_features=None, test_labels=None):
 	cluster_predictions = KM.predict(personal_features)
 	closest_cluster = mode(cluster_predictions).mode[0]
 
@@ -218,10 +227,10 @@ def cluster_plus_personal_model(personal_features, personal_labels,
 	scaled_train_x = scaler.transform(training_features)
 
 
-	rfc_clf = wisdm.weka_RF()
+	rfc_clf = weka_RF()
 	rfc_clf.fit(scaled_train_x, training_labels)
 
-	if test_features=None:
+	if test_features is None:
 		return rfc_clf
    
 	scaled_test_x = scaler.transform(test_features)
@@ -230,15 +239,18 @@ def cluster_plus_personal_model(personal_features, personal_labels,
 	score = accuracy_score(test_labels, predictions)
 	return score
 
-def random_sample_experiments(personal_features, personal_labels, \
+def random_sample_experiments(user_id, k_run, \
+							  personal_features, personal_labels, \
 							  impersonal_features, impersonal_labels, \
 							  active_features, active_labels, \
+							  test_features, test_labels, \
 							  training_sizes, \
-							  random_iterations, \
-							  impersonal_model=None, KM=None, \
-							  clusters=None)
+							  random_sample_iterations, \
+							  impersonal_model=None, impersonal_scaler=None, \
+							  KM=None, clusters=None):
 	# iteratively increase the number of samples we use
-	user_scores_df = []
+	rows = []
+
 	for ts in training_sizes:
 		# initialize score holders
 		personal_model_scores = []
@@ -248,12 +260,12 @@ def random_sample_experiments(personal_features, personal_labels, \
 
 		# run impersonal model
 		impersonal_scaled_test_x = impersonal_scaler.transform(test_features)
-		impersonal_model_score = accuracy_score(test_labels, rfc_clf.predict(impersonal_scaled_test_x))
-		impersonal_model_scores.append(universal_model_score)
+		impersonal_model_score = accuracy_score(test_labels, impersonal_model.predict(impersonal_scaled_test_x))
+		impersonal_model_scores.append(impersonal_model_score)
 
 		for run in range(random_sample_iterations):
 			# get random samples
-			active_indeces = np.random.choice(len(personal_set), ts)
+			active_indeces = np.random.choice(len(personal_features), ts)
 			sampled_active_features = personal_features[active_indeces]
 			sampled_active_labels = personal_labels[active_indeces]
 
@@ -270,31 +282,87 @@ def random_sample_experiments(personal_features, personal_labels, \
 			# run personal + cluster
 			personal_plus_cluster_score = cluster_plus_personal_model(sampled_active_features, sampled_active_labels,
 																	impersonal_features, impersonal_labels,
-																	test_features=test_features, test_labels=test_labels, KM, clusters)
+																	KM, clusters,
+																	test_features=test_features, test_labels=test_labels)
 
 			personal_plus_cluster_scores.append(personal_plus_cluster_score)
 		row = {"test user" : user_id,
-                   "k-run" : k_run,
-               "classifier" : "RF with Wiki Parameters",
-               "personal training data" : training_size,
-               "personal score Mean" : np.mean(personal_model_scores),
-               "personal score STD" : np.std(personal_model_scores),
-               "impersonal score Mean" : np.mean(impersonal_model_scores),
-               "impersonal score STD" : np.std(impersonal_model_scores),
-               "personal + impersonal score Mean" : np.mean(personal_plus_all_scores),
-               "personal + impersonal score STD" : np.std(personal_plus_all_scores),
-               "personal + cluster score Mean" : np.mean(personal_plus_cluster_scores),
-               "personal + cluster score STD" : np.std(personal_plus_cluster_scores)
-               }
-		print("\tamount of personal data : %s row" % training_size)
+				   "k-run" : k_run,
+			   "classifier" : "RF with Wiki Parameters",
+			   "personal training data" : ts,
+			   "personal score Mean" : np.mean(personal_model_scores),
+			   "personal score STD" : np.std(personal_model_scores),
+			   "impersonal score Mean" : np.mean(impersonal_model_scores),
+			   "impersonal score STD" : np.std(impersonal_model_scores),
+			   "personal + impersonal score Mean" : np.mean(personal_plus_all_scores),
+			   "personal + impersonal score STD" : np.std(personal_plus_all_scores),
+			   "personal + cluster score Mean" : np.mean(personal_plus_cluster_scores),
+			   "personal + cluster score STD" : np.std(personal_plus_cluster_scores)
+			   }
+		print("\tamount of personal data : %s row" % ts)
 		print("\tpersonal model score : M=%.3f, SD=%.3f" % (row["personal score Mean"], row["personal score STD"]))
 		print("\tuniversal model score : M=%.3f, SD=%.3f" % (row["impersonal score Mean"], row["impersonal score STD"]))
 		print("\tpersonal + ALL Impersonal : M=%.3f, SD=%.3f" % (row["personal + impersonal score Mean"], row["personal + impersonal score STD"]))
 		print("\tpersonal + CLUSTER Impersonal : M=%.3f, SD=%.3f" % (row["personal + cluster score Mean"], row["personal + cluster score STD"]))
 		print("\n")
+		rows.append(row)
+
+	user_scores_df = pd.DataFrame(rows)
 	return user_scores_df
 
-def pipeline1(output_path, user_ids, minimum_personal_samples=40):
+def garcia_ceja_approach(user_id, k_run, \
+						personal_features, personal_labels, \
+						impersonal_features, impersonal_labels, \
+						active_features, active_labels, \
+						test_features, test_labels,
+						k_upper_bound=7):
+	training_set = []
+	training_labels = []
+	sample_weights = []
+
+	class_labels = impersonal_labels.unique()
+	r = 0.2
+	personal_weight = (1 - r) ** len(personal_features)
+
+	for cl in class_labels:
+		personal_cl_features = [pf for ind, pf in enumerate(personal_features) if personal_labels[ind] == cl]
+		impersonal_cl_features = [impf for ind, impf in enumerate(impersonal_features) if impersonal_labels[ind] == cl]
+
+		cl_features = np.vstack((personal_cl_features, impersonal_cl_features))
+
+		# cluster combined data
+		KM_objs = []
+		KM_silhouette_scores = []
+		for k in range(2, k_upper_bound):
+			KM = KMeans(n_clusters=k)
+			KM.fit(cl_features)
+			cluster_labels = KM.predict(cl_features)
+			silhouette_avg = silhouette_score(X, cluster_labels)
+			KM_silhouette_scores.append(silhouette_avg)
+			KM_objs.append(KM)
+		KM = KM_objs[np.argmax(KM_silhouette_scores)]
+
+		# predict cluster for personal features
+		predictions = KM.predict(personal_cl_features)
+		best_cluster_label = mode(predictions)[0]
+		
+		# add the personal data
+		training_set += personal_cl_features
+		training_labels += [cl] * len(personal_cl_features)
+		sample_weights += [personal_weight] * len(personal_cl_features)
+
+		for impf in impersonal_cl_features:
+			cluster_label = KM.predict(impf)
+			if cluster_label == best_cluster_label:
+				training_set.append(impf)
+				training_label.append(cl)
+				sample_weight = 1 - personal_weight
+
+	# train the model
+	
+	# make predictions
+
+def pipeline1(output_path, user_ids, k=10, minimum_personal_samples=40):
 	# initialize pipeline variables
 	random_sample_iterations = 5
 	
@@ -304,10 +372,10 @@ def pipeline1(output_path, user_ids, minimum_personal_samples=40):
 		warnings.simplefilter("ignore")
 
 		# Train model with v1.1 data and get clusterings
-		wisdm.set_data(version='1', make_compatible=True)
+		set_data(version='1', make_compatible=True)
 
-		data_df_v1 = wisdm.remove_all_nan(wisdm.data_df)
-		user_ids_v1 = wisdm.user_ids
+		data_df_v1 = remove_all_nan(data_df)
+		user_ids_v1 = user_ids
 
 		impersonal_labels = np.array([t.decode("utf-8") for t in data_df_v1['class'].as_matrix()])
 		impersonal_features = data_df_v1.as_matrix(columns=[data_df_v1.columns[1:-1]])
@@ -316,18 +384,27 @@ def pipeline1(output_path, user_ids, minimum_personal_samples=40):
 		impersonal_scaler = StandardScaler().fit(impersonal_features)
 		scaled_train_x = impersonal_scaler.transform(impersonal_features)
 
-		rfc_clf = wisdm.weka_RF()
+		rfc_clf = weka_RF()
 		rfc_clf.fit(scaled_train_x, impersonal_labels)
 
 		# calibrated for probability estimation
 		prob_cal_clf = CalibratedClassifierCV(rfc_clf, method='sigmoid')
 		prob_cal_clf.fit(scaled_train_x, impersonal_labels)
 
+		# create clusters
+		number_of_clusters = 4 # the higher this number is, the smaller we should expect each cluster to be
+
+		KM = KMeans(n_clusters=number_of_clusters)
+		clusters = KM.fit_predict(scaled_train_x)
+
+		# reset data back to v2.0
+		set_data(version="2", make_compatible=True)
+
 		for ind, user_id in enumerate(user_ids): # iterate through the users holding one out for testing
-			user_scores_df = []
+			user_results = []
 			print("Running user #%s: %s" % (ind, user_id))
-			personal_set = wisdm.get_user_set(user_id)
-			personal_set = wisdm.remove_all_nan(personal_set)
+			personal_set = get_user_set(user_id)
+			personal_set = remove_all_nan(personal_set)
 
 			print("%s personal samples" % len(personal_set))
 
@@ -342,70 +419,25 @@ def pipeline1(output_path, user_ids, minimum_personal_samples=40):
 			skf = StratifiedKFold(n_splits=k)
 			k_run = 0
 
-			# get test set
-			# held out test set from individual
-			test_features = personal_features[test_index]
-			test_labels = personal_labels[test_index]
-
 			for active_index, test_index in skf.split(personal_features, personal_labels):
-				#print("\tRunning Fold #%s\n" % k_run)
+				print("\tRunning Fold #%s\n" % k_run)
 				# data set available for active labeling from the individual
 				all_active_features = personal_features[active_index]
 				all_active_labels = personal_labels[active_index]
+
+				# held out test set from individual
+				test_features = personal_features[test_index]
+				test_labels = personal_labels[test_index]
 			
-				# iteratively increase the number of samples we use
-				for ts in training_sizes:
-					# initialize score holders
-					personal_model_scores = []
-					impersonal_model_scores = []
-					personal_plus_all_scores = []
-					personal_plus_cluster_scores = []
-
-					# run impersonal model
-					impersonal_scaled_test_x = impersonal_scaler.transform(test_features)
-					impersonal_model_score = accuracy_score(test_labels, rfc_clf.predict(impersonal_scaled_test_x))
-					impersonal_model_scores.append(universal_model_score)
-
-					for run in range(random_sample_iterations):
-						# get random samples
-						active_indeces = np.random.choice(len(personal_set), ts)
-						sampled_active_features = personal_features[active_indeces]
-						sampled_active_labels = personal_labels[active_indeces]
-
-						# run personal model
-						personal_score = personal_model(sampled_active_features, sampled_active_labels, test_features=test_features, test_labels=test_labels)
-						personal_model_scores.append(personal_score)
-
-						# run personal + universal
-						personal_plus_all_score = impersonal_plus_personal_model(sampled_active_features, sampled_active_labels,
-																				impersonal_features, impersonal_labels,
-																				test_features=test_features, test_labels=test_labels)
-						personal_plus_all_scores.append(personal_plus_all_score)
-
-						# run personal + cluster
-						personal_plus_cluster_score = cluster_plus_personal_model(sampled_active_features, sampled_active_labels,
-																				impersonal_features, impersonal_labels,
-																				test_features=test_features, test_labels=test_labels, KM, clusters)
-
-						personal_plus_cluster_scores.append(personal_plus_cluster_score)
-					row = {"test user" : user_id,
-                               "k-run" : k_run,
-                           "classifier" : "RF with Wiki Parameters",
-                           "personal training data" : training_size,
-                           "personal score Mean" : np.mean(personal_model_scores),
-                           "personal score STD" : np.std(personal_model_scores),
-                           "impersonal score Mean" : np.mean(impersonal_model_scores),
-                           "impersonal score STD" : np.std(impersonal_model_scores),
-                           "personal + impersonal score Mean" : np.mean(personal_plus_all_scores),
-                           "personal + impersonal score STD" : np.std(personal_plus_all_scores),
-                           "personal + cluster score Mean" : np.mean(personal_plus_cluster_scores),
-                           "personal + cluster score STD" : np.std(personal_plus_cluster_scores)
-                           }
-					print("\tamount of personal data : %s row" % training_size)
-					print("\tpersonal model score : M=%.3f, SD=%.3f" % (row["personal score Mean"], row["personal score STD"]))
-					print("\tuniversal model score : M=%.3f, SD=%.3f" % (row["impersonal score Mean"], row["impersonal score STD"]))
-					print("\tpersonal + ALL Impersonal : M=%.3f, SD=%.3f" % (row["personal + impersonal score Mean"], row["personal + impersonal score STD"]))
-					print("\tpersonal + CLUSTER Impersonal : M=%.3f, SD=%.3f" % (row["personal + cluster score Mean"], row["personal + cluster score STD"]))
-					print("\n")
-					user_scores_df.append(row)
+				k_run_df = random_sample_experiments(user_id, k_run, personal_features, personal_labels, \
+							  impersonal_features, impersonal_labels, \
+							  all_active_features, all_active_labels, \
+							  test_features, test_labels, \
+							  training_sizes, \
+							  random_sample_iterations, \
+							  impersonal_model=rfc_clf, impersonal_scaler=impersonal_scaler,
+							  KM=KM, clusters=clusters)
+				user_results.append(k_run_df)
 				k_run += 1
+			user_scores_df = pd.concat(user_results)
+			user_scores_df.to_pickle(output_path+user_id+".pickle")
