@@ -239,6 +239,67 @@ def cluster_plus_personal_model(personal_features, personal_labels,
 	score = accuracy_score(test_labels, predictions)
 	return score
 
+def garcia_ceja_model(active_features, active_labels, \
+						impersonal_features, impersonal_labels, \
+						test_features=None, test_labels=None,
+						k_upper_bound=7):
+	training_features = []
+	training_labels = []
+	sample_weights = []
+
+	class_labels = impersonal_labels.unique()
+	r = 0.2
+	personal_weight = (1 - r) ** len(active_features)
+
+	for cl in class_labels:
+		active_cl_features = [pf for ind, pf in enumerate(active_features) if active_labels[ind] == cl]
+		impersonal_cl_features = [impf for ind, impf in enumerate(impersonal_features) if impersonal_labels[ind] == cl]
+
+		cl_features = np.vstack((active_cl_features, impersonal_cl_features))
+
+		# cluster combined data
+		KM_objs = []
+		KM_silhouette_scores = []
+		for k in range(2, k_upper_bound):
+			KM = KMeans(n_clusters=k)
+			KM.fit(cl_features)
+			cluster_labels = KM.predict(cl_features)
+			silhouette_avg = silhouette_score(X, cluster_labels)
+			KM_silhouette_scores.append(silhouette_avg)
+			KM_objs.append(KM)
+		KM = KM_objs[np.argmax(KM_silhouette_scores)]
+
+		# predict cluster for personal features
+		predictions = KM.predict(active_cl_features)
+		best_cluster_label = mode(predictions)[0]
+		
+		# add the personal data
+		training_features += active_cl_features
+		training_labels += [cl] * len(active_cl_features)
+		sample_weights += [personal_weight] * len(active_cl_features)
+
+		for impf in impersonal_cl_features:
+			cluster_label = KM.predict(impf)
+			if cluster_label == best_cluster_label:
+				training_set.append(impf)
+				training_label.append(cl)
+				sample_weight = 1 - personal_weight
+
+	# train the model
+	hybrid_clf = weka_RF()
+	hybrid_scaler = StandardScaler().fit(training_features)
+	scaled_training_features = hybrid_scaler.transform(training_features)
+	clf.fit(scaled_training_features, training_labels, sample_weight)
+	
+	if test_features is None:
+		return clf
+
+	# make predictions
+	scaled_test_features = hybrid_scaler.transform(test_features)
+	predictions = clf.predict(scaled_test_features)
+	score = accuracy_score(test_labels, predictions)
+	return score
+
 def random_sample_experiments(user_id, k_run, \
 							  personal_features, personal_labels, \
 							  impersonal_features, impersonal_labels, \
@@ -257,6 +318,7 @@ def random_sample_experiments(user_id, k_run, \
 		impersonal_model_scores = []
 		personal_plus_all_scores = []
 		personal_plus_cluster_scores = []
+		gc_scores = []
 
 		# run impersonal model
 		impersonal_scaled_test_x = impersonal_scaler.transform(test_features)
@@ -286,6 +348,10 @@ def random_sample_experiments(user_id, k_run, \
 																	test_features=test_features, test_labels=test_labels)
 
 			personal_plus_cluster_scores.append(personal_plus_cluster_score)
+			gc_score = garcia_ceja_model(sampled_active_features, sampled_active_labels,
+										impersonal_features, impersonal_labels,
+										test_features=test_features, test_labels=test_labels)
+			gc_scores.append(gc_score)
 		row = {"test user" : user_id,
 				   "k-run" : k_run,
 			   "classifier" : "RF with Wiki Parameters",
@@ -297,72 +363,23 @@ def random_sample_experiments(user_id, k_run, \
 			   "personal + impersonal score Mean" : np.mean(personal_plus_all_scores),
 			   "personal + impersonal score STD" : np.std(personal_plus_all_scores),
 			   "personal + cluster score Mean" : np.mean(personal_plus_cluster_scores),
-			   "personal + cluster score STD" : np.std(personal_plus_cluster_scores)
+			   "personal + cluster score STD" : np.std(personal_plus_cluster_scores),
+			   "Garcia-Ceja MM Mean" : np.mean(gc_scores),
+			   "Garcia-Ceja MM STD" : np.std(gc_scores)
 			   }
 		print("\tamount of personal data : %s row" % ts)
 		print("\tpersonal model score : M=%.3f, SD=%.3f" % (row["personal score Mean"], row["personal score STD"]))
 		print("\tuniversal model score : M=%.3f, SD=%.3f" % (row["impersonal score Mean"], row["impersonal score STD"]))
 		print("\tpersonal + ALL Impersonal : M=%.3f, SD=%.3f" % (row["personal + impersonal score Mean"], row["personal + impersonal score STD"]))
 		print("\tpersonal + CLUSTER Impersonal : M=%.3f, SD=%.3f" % (row["personal + cluster score Mean"], row["personal + cluster score STD"]))
+		print("\tGC MM M=%.3f, SD=%.3f" % (row["Garcia-Ceja MM Mean"], row["Garcia-Ceja MM STD"]))
 		print("\n")
 		rows.append(row)
 
 	user_scores_df = pd.DataFrame(rows)
 	return user_scores_df
 
-def garcia_ceja_approach(user_id, k_run, \
-						personal_features, personal_labels, \
-						impersonal_features, impersonal_labels, \
-						active_features, active_labels, \
-						test_features, test_labels,
-						k_upper_bound=7):
-	training_set = []
-	training_labels = []
-	sample_weights = []
-
-	class_labels = impersonal_labels.unique()
-	r = 0.2
-	personal_weight = (1 - r) ** len(personal_features)
-
-	for cl in class_labels:
-		personal_cl_features = [pf for ind, pf in enumerate(personal_features) if personal_labels[ind] == cl]
-		impersonal_cl_features = [impf for ind, impf in enumerate(impersonal_features) if impersonal_labels[ind] == cl]
-
-		cl_features = np.vstack((personal_cl_features, impersonal_cl_features))
-
-		# cluster combined data
-		KM_objs = []
-		KM_silhouette_scores = []
-		for k in range(2, k_upper_bound):
-			KM = KMeans(n_clusters=k)
-			KM.fit(cl_features)
-			cluster_labels = KM.predict(cl_features)
-			silhouette_avg = silhouette_score(X, cluster_labels)
-			KM_silhouette_scores.append(silhouette_avg)
-			KM_objs.append(KM)
-		KM = KM_objs[np.argmax(KM_silhouette_scores)]
-
-		# predict cluster for personal features
-		predictions = KM.predict(personal_cl_features)
-		best_cluster_label = mode(predictions)[0]
-		
-		# add the personal data
-		training_set += personal_cl_features
-		training_labels += [cl] * len(personal_cl_features)
-		sample_weights += [personal_weight] * len(personal_cl_features)
-
-		for impf in impersonal_cl_features:
-			cluster_label = KM.predict(impf)
-			if cluster_label == best_cluster_label:
-				training_set.append(impf)
-				training_label.append(cl)
-				sample_weight = 1 - personal_weight
-
-	# train the model
-	
-	# make predictions
-
-def pipeline1(output_path, user_ids, k=10, minimum_personal_samples=40):
+def pipeline2(output_path, user_ids, k=10, minimum_personal_samples=40):
 	# initialize pipeline variables
 	random_sample_iterations = 5
 	
@@ -414,6 +431,83 @@ def pipeline1(output_path, user_ids, k=10, minimum_personal_samples=40):
 
 			personal_labels = np.array([t.decode("utf-8") for t in personal_set['class'].as_matrix()])
 			personal_features = personal_set.as_matrix(columns=[personal_set.columns[1:-1]])
+
+			# split personal data into training (potentially) and test
+			skf = StratifiedKFold(n_splits=k)
+			k_run = 0
+
+			for active_index, test_index in skf.split(personal_features, personal_labels):
+				print("\tRunning Fold #%s\n" % k_run)
+				# data set available for active labeling from the individual
+				all_active_features = personal_features[active_index]
+				all_active_labels = personal_labels[active_index]
+
+				# held out test set from individual
+				test_features = personal_features[test_index]
+				test_labels = personal_labels[test_index]
+			
+				k_run_df = random_sample_experiments(user_id, k_run, personal_features, personal_labels, \
+							  impersonal_features, impersonal_labels, \
+							  all_active_features, all_active_labels, \
+							  test_features, test_labels, \
+							  training_sizes, \
+							  random_sample_iterations, \
+							  impersonal_model=rfc_clf, impersonal_scaler=impersonal_scaler,
+							  KM=KM, clusters=clusters)
+				user_results.append(k_run_df)
+				k_run += 1
+			user_scores_df = pd.concat(user_results)
+			user_scores_df.to_pickle(output_path+user_id+".pickle")
+
+def pipeline1(version, output_path, user_ids, k=10, minimum_personal_samples=40, make_compatible=True):
+	# initialize pipeline variables
+	random_sample_iterations = 5
+	
+	training_sizes = [10,20,30,40,50,60,70,80,90,100]
+
+	with warnings.catch_warnings():
+		warnings.simplefilter("ignore")
+
+		# Train model with v1.1 data and get clusterings
+		set_data(version=version, make_compatible=make_compatible)
+
+		for ind, user_id in enumerate(user_ids): # iterate through the users holding one out for testing
+			user_results = []
+			print("Running user #%s: %s" % (ind, user_id))
+			personal_set = get_user_set(user_id)
+			personal_set = remove_all_nan(personal_set)
+
+			print("%s personal samples" % len(personal_set))
+
+			if len(personal_set) < minimum_personal_samples:
+				print("User %s has less than %s labeled samples..." % (user_id, minimum_personal_samples))
+				continue
+
+			personal_labels = np.array([t.decode("utf-8") for t in personal_set['class'].as_matrix()])
+			personal_features = personal_set.as_matrix(columns=[personal_set.columns[1:-1]])
+
+			# get impersonal data
+			impersonal_set = data_df[data_df['user'] != user_id]
+			impersonal_set = remove_all_nan(impersonal_set)
+			impersonal_labels = np.array([t.decode("utf-8") for t in impersonal_set['class'].as_matrix()])
+			impersonal_features = impersonal_set.as_matrix(columns=[impersonal_set.columns[1:-1]])
+
+			# train an impersonal model
+			impersonal_scaler = StandardScaler().fit(impersonal_features)
+			scaled_train_x = impersonal_scaler.transform(impersonal_features)
+
+			rfc_clf = weka_RF()
+			rfc_clf.fit(scaled_train_x, impersonal_labels)
+
+			# calibrated for probability estimation
+			prob_cal_clf = CalibratedClassifierCV(rfc_clf, method='sigmoid')
+			prob_cal_clf.fit(scaled_train_x, impersonal_labels)
+
+			# create clusters
+			number_of_clusters = 4 # the higher this number is, the smaller we should expect each cluster to be
+
+			KM = KMeans(n_clusters=number_of_clusters)
+			clusters = KM.fit_predict(scaled_train_x)
 
 			# split personal data into training (potentially) and test
 			skf = StratifiedKFold(n_splits=k)
