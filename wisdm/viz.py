@@ -42,72 +42,128 @@ def get_results_dataframe(experiment_path):
 def accuracy_means_by_training_size():
 	training_sizes = [10,20,30,40,50,60,70,80,90,100]
 
-	personal_means = {}
-	personal_plus_universal_means = {}
-	personal_plus_cluster_means = {}
+	random_personal_means = {}
+	random_personal_plus_universal_means = {}
+	random_personal_plus_cluster_means = {}
+	least_certain_personal_means = {}
+	least_certain_personal_plus_universal_means = {}
+	least_certain_personal_plus_cluster_means = {}
 	universal_means = results_df['impersonal score Mean']
 
 	for ts in training_sizes:
-		personal_scores = results_df[results_df['personal training data'] == ts]['personal score Mean']
-		personal_means[ts] = personal_scores
+		random_personal_scores = results_df[results_df['personal training data'] == ts]['random personal score Mean']
+		random_personal_means[ts] = random_personal_scores
 		
-		personal_plus_universal_scores = results_df[results_df['personal training data'] == ts]['personal + impersonal score Mean']
-		personal_plus_universal_means[ts] = personal_plus_universal_scores
+		random_personal_plus_universal_scores = results_df[results_df['personal training data'] == ts]['random personal + impersonal score Mean']
+		random_personal_plus_universal_means[ts] = random_personal_plus_universal_scores
 		
-		personal_plus_cluster_scores = results_df[results_df['personal training data'] == ts]['personal + cluster score Mean']
-		personal_plus_cluster_means[ts] = personal_plus_cluster_scores
+		random_personal_plus_cluster_scores = results_df[results_df['personal training data'] == ts]['random personal + cluster score Mean']
+		random_personal_plus_cluster_means[ts] = random_personal_plus_cluster_scores
 
-		universal_trace = go.Box(y=universal_means,
-					  x=[0]*len(universal_means),
-					  name="universal model",
-					  )
+		least_certain_personal_scores = results_df[results_df['personal training data'] == ts]['least_certain personal score Mean']
+		least_certain_personal_means[ts] = least_certain_personal_scores
+		
+		least_certain_personal_plus_universal_scores = results_df[results_df['personal training data'] == ts]['least_certain personal + impersonal score Mean']
+		least_certain_personal_plus_universal_means[ts] = least_certain_personal_plus_universal_scores
+		
+		least_certain_personal_plus_cluster_scores = results_df[results_df['personal training data'] == ts]['least_certain personal + cluster score Mean']
+		least_certain_personal_plus_cluster_means[ts] = least_certain_personal_plus_cluster_scores
+
+	universal_trace = go.Box(y=universal_means,
+				  x=[0]*len(universal_means),
+				  name="universal model",
+				  )
 
 	data = [universal_trace]
 
-	personal_x = []
-	personal_plus_universal_x = []
-	personal_plus_cluster_x = []
+	random_personal_x = []
+	random_personal_plus_universal_x = []
+	random_personal_plus_cluster_x = []
 
-	personal_means_all = []
-	personal_plus_universal_means_all = []
-	personal_plus_cluster_means_all = []
+	random_personal_means_all = []
+	random_personal_plus_universal_means_all = []
+	random_personal_plus_cluster_means_all = []
+
+	least_certain_personal_x = []
+	least_certain_personal_plus_universal_x = []
+	least_certain_personal_plus_cluster_x = []
+
+	least_certain_personal_means_all = []
+	least_certain_personal_plus_universal_means_all = []
+	least_certain_personal_plus_cluster_means_all = []
 
 	for ts in training_sizes:
-		personal_means_all += personal_means[ts].tolist()
-		personal_x += [ts] * len(personal_means[ts])
+		random_personal_means_all += random_personal_means[ts].tolist()
+		random_personal_x += [ts] * len(random_personal_means[ts])
 		
-		personal_plus_universal_means_all += personal_plus_universal_means[ts].tolist()
-		personal_plus_universal_x += [ts] *len(personal_plus_universal_means[ts])
+		random_personal_plus_universal_means_all += random_personal_plus_universal_means[ts].tolist()
+		random_personal_plus_universal_x += [ts] *len(random_personal_plus_universal_means[ts])
 		
-		personal_plus_cluster_means_all += personal_plus_cluster_means[ts].tolist()
-		personal_plus_cluster_x += [ts] * len(personal_plus_cluster_means[ts])
+		random_personal_plus_cluster_means_all += random_personal_plus_cluster_means[ts].tolist()
+		random_personal_plus_cluster_x += [ts] * len(random_personal_plus_cluster_means[ts])
 
-	personal_trace = go.Box(y=personal_means_all,
-						 x=personal_x,
+		least_certain_personal_means_all += least_certain_personal_means[ts].tolist()
+		least_certain_personal_x += [ts] * len(least_certain_personal_means[ts])
+		
+		least_certain_personal_plus_universal_means_all += least_certain_personal_plus_universal_means[ts].tolist()
+		least_certain_personal_plus_universal_x += [ts] *len(least_certain_personal_plus_universal_means[ts])
+		
+		least_certain_personal_plus_cluster_means_all += least_certain_personal_plus_cluster_means[ts].tolist()
+		least_certain_personal_plus_cluster_x += [ts] * len(least_certain_personal_plus_cluster_means[ts])
+
+	random_personal_trace = go.Box(y=random_personal_means_all,
+						 x=random_personal_x,
 						 #boxpoints='all',
 						 #jitter=0.8,
 						 marker=dict(opacity=0.3),
-						 name="Personal")
+						 name="Random Personal")
 
-	data.append(personal_trace)
+	data.append(random_personal_trace)
 
-	personal_plus_universal_trace = go.Box(y=personal_plus_universal_means_all,
-										x=personal_plus_universal_x,
+	random_personal_plus_universal_trace = go.Box(y=random_personal_plus_universal_means_all,
+										x=random_personal_plus_universal_x,
 										#boxpoints='all',
 										#jitter=0.8,
 										marker=dict(opacity=0.3),
-										name="Personal + Universal")
+										name="Random Personal + Universal")
 
-	data.append(personal_plus_universal_trace)
+	data.append(random_personal_plus_universal_trace)
 
-	personal_plus_cluster_trace = go.Box(y=personal_plus_cluster_means_all,
-										x=personal_plus_cluster_x,
+	random_personal_plus_cluster_trace = go.Box(y=random_personal_plus_cluster_means_all,
+										x=random_personal_plus_cluster_x,
 										#boxpoints='all',
 									  #jitter=0.8,
 									  marker=dict(opacity=0.3),
-										name="Personal + Cluster")
+										name="Ranomd Personal + Cluster")
 
-	data.append(personal_plus_cluster_trace)
+	data.append(random_personal_plus_cluster_trace)
+
+	least_certain_personal_trace = go.Box(y=least_certain_personal_means_all,
+						 x=least_certain_personal_x,
+						 #boxpoints='all',
+						 #jitter=0.8,
+						 marker=dict(opacity=0.3),
+						 name="Least Certain Personal")
+
+	data.append(least_certain_personal_trace)
+
+	least_certain_personal_plus_universal_trace = go.Box(y=least_certain_personal_plus_universal_means_all,
+										x=least_certain_personal_plus_universal_x,
+										#boxpoints='all',
+										#jitter=0.8,
+										marker=dict(opacity=0.3),
+										name="Least Certain Personal + Universal")
+
+	data.append(least_certain_personal_plus_universal_trace)
+
+	least_certain_personal_plus_cluster_trace = go.Box(y=least_certain_personal_plus_cluster_means_all,
+										x=least_certain_personal_plus_cluster_x,
+										#boxpoints='all',
+									  #jitter=0.8,
+									  marker=dict(opacity=0.3),
+										name="Least Certain Personal + Cluster")
+
+	data.append(least_certain_personal_plus_cluster_trace)
 
 	layout = go.Layout(showlegend=True,
 					boxmode='group',
@@ -118,23 +174,40 @@ def accuracy_means_by_training_size():
 
 def plotScoresByUser(user_id):
 	training_sizes = [10,20,30,40,50,60,70,80,90,100]
-	personal_means = {}
-	personal_plus_universal_means = {}
-	personal_plus_cluster_means = {}
+	random_personal_means = {}
+	random_personal_plus_universal_means = {}
+	random_personal_plus_cluster_means = {}
+	least_certain_personal_means = {}
+	least_certain_personal_plus_universal_means = {}
+	least_certain_personal_plus_cluster_means = {}
 	universal_means = results_df['impersonal score Mean']
 
 	for ts in training_sizes:
+		random_personal_scores = results_df[results_df[(results_df['personal training data'] == ts) & \
+									 (results_df['test user'] == user_id)] == ts]['random personal score Mean']
+		random_personal_means[ts] = random_personal_scores
+		
+		random_personal_plus_universal_scores = results_df[results_df[(results_df['personal training data'] == ts) & \
+									 (results_df['test user'] == user_id)] == ts]['random personal + impersonal score Mean']
+		random_personal_plus_universal_means[ts] = random_personal_plus_universal_scores
+		
+		random_personal_plus_cluster_scores = results_df[results_df[(results_df['personal training data'] == ts) & \
+									 (results_df['test user'] == user_id)] == ts]['random personal + cluster score Mean']
+		random_personal_plus_cluster_means[ts] = random_personal_plus_cluster_scores
+
+		least_certain_personal_scores = results_df[results_df[(results_df['personal training data'] == ts) & \
+									 (results_df['test user'] == user_id)] == ts]['least_certain personal score Mean']
+		least_certain_personal_means[ts] = least_certain_personal_scores
+		
+		least_certain_personal_plus_universal_scores = results_df[results_df[(results_df['personal training data'] == ts) & \
+									 (results_df['test user'] == user_id)] == ts]['least_certain personal + impersonal score Mean']
+		least_certain_personal_plus_universal_means[ts] = least_certain_personal_plus_universal_scores
+		
+		least_certain_personal_plus_cluster_scores = results_df[results_df[(results_df['personal training data'] == ts) & \
+									 (results_df['test user'] == user_id)] == ts]['least_certain personal + cluster score Mean']
+		least_certain_personal_plus_cluster_means[ts] = least_certain_personal_plus_cluster_scores
 		personal_scores = results_df[(results_df['personal training data'] == ts) & \
 									 (results_df['test user'] == user_id)]['personal score Mean']
-		personal_means[ts] = personal_scores
-
-		personal_plus_universal_scores = results_df[(results_df['personal training data'] == ts) & \
-									 (results_df['test user'] == user_id)]['personal + impersonal score Mean']
-		personal_plus_universal_means[ts] = personal_plus_universal_scores
-
-		personal_plus_cluster_scores = results_df[(results_df['personal training data'] == ts) & \
-									 (results_df['test user'] == user_id)]['personal + cluster score Mean']
-		personal_plus_cluster_means[ts] = personal_plus_cluster_scores
 	
 	
 	universal_trace = go.Box(y=universal_means,
@@ -145,46 +218,99 @@ def plotScoresByUser(user_id):
 
 	data = [universal_trace]
 
-	personal_x = []
-	personal_plus_universal_x = []
-	personal_plus_cluster_x = []
+	random_personal_x = []
+	random_personal_plus_universal_x = []
+	random_personal_plus_cluster_x = []
 
-	personal_means_all = []
-	personal_plus_universal_means_all = []
-	personal_plus_cluster_means_all = []
+	random_personal_means_all = []
+	random_personal_plus_universal_means_all = []
+	random_personal_plus_cluster_means_all = []
+
+	least_certain_personal_x = []
+	least_certain_personal_plus_universal_x = []
+	least_certain_personal_plus_cluster_x = []
+
+	least_certain_personal_means_all = []
+	least_certain_personal_plus_universal_means_all = []
+	least_certain_personal_plus_cluster_means_all = []
 
 	for ts in training_sizes:
-		personal_means_all += personal_means[ts].tolist()
-		personal_x += [ts] * len(personal_means[ts])
+		random_personal_means_all += random_personal_means[ts].tolist()
+		random_personal_x += [ts] * len(random_personal_means[ts])
+		
+		random_personal_plus_universal_means_all += random_personal_plus_universal_means[ts].tolist()
+		random_personal_plus_universal_x += [ts] *len(random_personal_plus_universal_means[ts])
+		
+		random_personal_plus_cluster_means_all += random_personal_plus_cluster_means[ts].tolist()
+		random_personal_plus_cluster_x += [ts] * len(random_personal_plus_cluster_means[ts])
 
-		personal_plus_universal_means_all += personal_plus_universal_means[ts].tolist()
-		personal_plus_universal_x += [ts] *len(personal_plus_universal_means[ts])
+		least_certain_personal_means_all += least_certain_personal_means[ts].tolist()
+		least_certain_personal_x += [ts] * len(least_certain_personal_means[ts])
+		
+		least_certain_personal_plus_universal_means_all += least_certain_personal_plus_universal_means[ts].tolist()
+		least_certain_personal_plus_universal_x += [ts] *len(least_certain_personal_plus_universal_means[ts])
+		
+		least_certain_personal_plus_cluster_means_all += least_certain_personal_plus_cluster_means[ts].tolist()
+		least_certain_personal_plus_cluster_x += [ts] * len(least_certain_personal_plus_cluster_means[ts])
 
-		personal_plus_cluster_means_all += personal_plus_cluster_means[ts].tolist()
-		personal_plus_cluster_x += [ts] * len(personal_plus_cluster_means[ts])
+	random_personal_trace = go.Box(y=random_personal_means_all,
+						 x=random_personal_x,
+						 #boxpoints='all',
+						 #jitter=0.8,
+						 marker=dict(opacity=0.3),
+						 name="Random Personal")
 
-	personal_trace = go.Box(y=personal_means_all,
-						 x=personal_x,
-						 name="Personal",
-						 boxpoints="suspectedoutliers")
+	data.append(random_personal_trace)
 
-	data.append(personal_trace)
+	random_personal_plus_universal_trace = go.Box(y=random_personal_plus_universal_means_all,
+										x=random_personal_plus_universal_x,
+										#boxpoints='all',
+										#jitter=0.8,
+										marker=dict(opacity=0.3),
+										name="Random Personal + Universal")
 
-	personal_plus_universal_trace = go.Box(y=personal_plus_universal_means_all,
-										x=personal_plus_universal_x,
-										name="Personal + Universal",
-										boxpoints="suspectedoutliers")
+	data.append(random_personal_plus_universal_trace)
 
-	data.append(personal_plus_universal_trace)
+	random_personal_plus_cluster_trace = go.Box(y=random_personal_plus_cluster_means_all,
+										x=random_personal_plus_cluster_x,
+										#boxpoints='all',
+									  #jitter=0.8,
+									  marker=dict(opacity=0.3),
+										name="Ranomd Personal + Cluster")
 
-	personal_plus_cluster_trace = go.Box(y=personal_plus_cluster_means_all,
-										x=personal_plus_cluster_x,
-										name="Personal + Cluster",
-										boxpoints="suspectedoutliers")
+	data.append(random_personal_plus_cluster_trace)
 
-	data.append(personal_plus_cluster_trace)
+	least_certain_personal_trace = go.Box(y=least_certain_personal_means_all,
+						 x=least_certain_personal_x,
+						 #boxpoints='all',
+						 #jitter=0.8,
+						 marker=dict(opacity=0.3),
+						 name="Least Certain Personal")
 
-	layout = go.Layout(showlegend=True, boxmode='group')
+	data.append(least_certain_personal_trace)
+
+	least_certain_personal_plus_universal_trace = go.Box(y=least_certain_personal_plus_universal_means_all,
+										x=least_certain_personal_plus_universal_x,
+										#boxpoints='all',
+										#jitter=0.8,
+										marker=dict(opacity=0.3),
+										name="Least Certain Personal + Universal")
+
+	data.append(least_certain_personal_plus_universal_trace)
+
+	least_certain_personal_plus_cluster_trace = go.Box(y=least_certain_personal_plus_cluster_means_all,
+										x=least_certain_personal_plus_cluster_x,
+										#boxpoints='all',
+									  #jitter=0.8,
+									  marker=dict(opacity=0.3),
+										name="Least Certain Personal + Cluster")
+
+	data.append(least_certain_personal_plus_cluster_trace)
+
+	layout = go.Layout(showlegend=True,
+					boxmode='group',
+					yaxis=dict(title="Accuracy in %"),
+					xaxis=dict(title="Amount of training data or training burden to the user"))
 	fig = go.Figure(data=data, layout=layout)
 	return fig
 
@@ -192,23 +318,39 @@ def getModelAccuracyMean(user_id, ts):
 	# each list element at index, i, represents that model improvement over the best other model with training size[k]
 	user_df = results_df[(results_df['test user'] == user_id) & \
 						 (results_df['personal training data'] == ts)]
-	personal_score_mean = user_df['personal score Mean'].mean()
+
 	impersonal_score_mean = user_df['impersonal score Mean'].mean()
-	personal_plus_impersonal_mean = user_df['personal + impersonal score Mean'].mean()
-	personal_plus_cluster_mean = user_df['personal + cluster score Mean'].mean()
+
+	random_personal_score_mean = user_df['random personal score Mean'].mean()
+	random_personal_plus_impersonal_mean = user_df['random personal + impersonal score Mean'].mean()
+	random_personal_plus_cluster_mean = user_df['random personal + cluster score Mean'].mean()
+
+	least_certain_personal_score_mean = user_df['least_certain personal score Mean'].mean()
+	least_certain_personal_plus_impersonal_mean = user_df['least_certain personal + impersonal score Mean'].mean()
+	least_certain_personal_plus_cluster_mean = user_df['least_certain personal + cluster score Mean'].mean()
 
 	#print("personal : %s" % personal_score_mean)
 	#print("impersonal : %s" % impersonal_score_mean)
 	#print("personal + impersonal : %s" % personal_plus_impersonal_mean)
 	#print("personal + cluster : %s" % personal_plus_cluster_mean)
-	mean_scores = {"personal" : personal_score_mean,
-				   "impersonal" : impersonal_score_mean,
-				   "personal + impersonal" : personal_plus_impersonal_mean,
-				   "personal + cluster" : personal_plus_cluster_mean}
+	mean_scores = {"impersonal" : impersonal_score_mean,
+				   "random personal" : random_personal_score_mean,
+				   "random personal + impersonal" : random_personal_plus_impersonal_mean,
+				   "random personal + cluster" : random_personal_plus_cluster_mean,
+				   "least_certain personal" : least_certain_personal_score_mean,
+				   "least_certain personal + impersonal" : least_certain_personal_plus_impersonal_mean,
+				   "least_certain personal + cluster" : least_certain_personal_plus_cluster_mean,}
 	return mean_scores
 
 def getBests(training_size):
-	model_means_columns = ['user id', 'personal', 'impersonal', 'personal + impersonal', 'personal + cluster']
+	model_means_columns = ['user id', \
+						   'impersonal',\
+						   'random personal',  \
+						   'random personal + impersonal', \
+						   'random personal + cluster', \
+						   'least_certain personal',  \
+						   'least_certain personal + impersonal', \
+						   'least_certain personal + cluster']
 	model_means = []
 
 	for user_id in wisdm.user_ids:
@@ -219,41 +361,68 @@ def getBests(training_size):
 
 	scores_df = pd.DataFrame(model_means, columns=model_means_columns)
 	
-	users_benefit_from_personal = []
 	users_benefit_from_impersonal = []
-	users_benefit_from_personal_plus_impersonal = []
-	users_benefit_from_personal_plus_cluster = []
+	users_benefit_from_random_personal = []
+	users_benefit_from_random_personal_plus_impersonal = []
+	users_benefit_from_random_personal_plus_cluster = []
+	users_benefit_from_least_certain_personal = []
+	users_benefit_from_least_certain_personal_plus_impersonal = []
+	users_benefit_from_least_certain_personal_plus_cluster = []
 
 	for ind, row in scores_df.iterrows():
-		scores = [row['personal'], row['impersonal'], row['personal + impersonal'], row['personal + cluster']]
+		scores = [row['impersonal'], \
+				  row['random personal'], \
+				  row['random personal + impersonal'], \
+				  row['random personal + cluster'], \
+				  row['least_certain personal'], \
+				  row['least_certain personal + impersonal'], \
+				  row['least_certain personal + cluster'], ]
 		best_model = np.argmax(scores)
 
 		if best_model == 0:
-			users_benefit_from_personal.append(row['user id'])
-		elif best_model == 1:
 			users_benefit_from_impersonal.append(row['user id'])
+		elif best_model == 1:
+			users_benefit_from_random_personal.append(row['user id'])
 		elif best_model == 2:
-			users_benefit_from_personal_plus_impersonal.append(row['user id'])
+			users_benefit_from_random_personal_plus_impersonal.append(row['user id'])
 		elif best_model == 3:
-			users_benefit_from_personal_plus_cluster.append(row['user id'])
-	return users_benefit_from_personal, users_benefit_from_impersonal, \
-			users_benefit_from_personal_plus_impersonal, users_benefit_from_personal_plus_cluster
+			users_benefit_from_random_personal_plus_cluster.append(row['user id'])
+		elif best_model == 4:
+			users_benefit_from_least_certain_personal.append(row['user id'])
+		elif best_model == 5:
+			users_benefit_from_least_certain_personal_plus_impersonal.append(row['user id'])
+		elif best_model == 6:
+			users_benefit_from_least_certain_personal_plus_cluster.append(row['user id'])
+	return users_benefit_from_impersonal, \
+			users_benefit_from_random_personal, \
+			users_benefit_from_random_personal_plus_impersonal, \
+			users_benefit_from_random_personal_plus_cluster, \
+			users_benefit_from_least_certain_personal, \
+			users_benefit_from_least_certain_personal_plus_impersonal, \
+			users_benefit_from_least_certain_personal_plus_cluster, \
 
 def plotUserBests():
 	training_sizes = [10,20,30,40,50,60,70,80,90,100]
 
-	personal_bests = []
 	impersonal_bests = []
-	personal_impersonal_bests = []
-	personal_cluster_bests = []
+	random_personal_bests = []
+	random_personal_impersonal_bests = []
+	random_personal_cluster_bests = []
+	least_certain_personal_bests = []
+	least_certain_personal_impersonal_bests = []
+	least_certain_personal_cluster_bests = []
 
 	for ts in training_sizes:
-		personal, impersonal, personal_impersonal, personal_cluster = getBests(ts)
-		
-		personal_bests.append(personal)
-		impersonal_bests.append(impersonal)
-		personal_impersonal_bests.append(personal_impersonal)
-		personal_cluster_bests.append(personal_cluster)
+		impersonal, random_personal, random_personal_impersonal, random_personal_cluster, \
+			least_certain_personal, least_certain_personal_impersonal, least_certain_personal_cluster = getBests(ts)
+
+		impersonal_bests.append(impersonal)		
+		random_personal_bests.append(random_personal)
+		random_personal_impersonal_bests.append(random_personal_impersonal)
+		random_personal_cluster_bests.append(random_personal_cluster)
+		least_certain_personal_bests.append(least_certain_personal)
+		least_certain_personal_impersonal_bests.append(least_certain_personal_impersonal)
+		least_certain_personal_cluster_bests.append(least_certain_personal_cluster)
 		
 		#print("Training Size : %s" % ts)
 		#print("\t personal : %s" % len(personal))
@@ -261,20 +430,36 @@ def plotUserBests():
 		#print("\t personal + impersonal : %s" % len(personal_impersonal))
 		#print("\t personal + cluster : %s" % len(personal_cluster))
 
-	personal_trace = go.Scatter(x=training_sizes,
-						 y=[len(x) for x in personal_bests],
-						 name="Personal")
 	impersonal_trace = go.Scatter(x=training_sizes,
 						   y=[len(x) for x in impersonal_bests],
 						   name="Impersonal")
-	personal_impersonal_trace = go.Scatter(x=training_sizes,
-						   y=[len(x) for x in personal_impersonal_bests],
-						   name="Personal + Impersonal")
-	personal_cluster_trace = go.Scatter(x=training_sizes,
-						   y=[len(x) for x in personal_cluster_bests],
-						   name="Personal + Cluster")
+	random_personal_trace = go.Scatter(x=training_sizes,
+						 y=[len(x) for x in random_personal_bests],
+						 name="Random Personal")
+	random_personal_impersonal_trace = go.Scatter(x=training_sizes,
+						   y=[len(x) for x in random_personal_impersonal_bests],
+						   name="Random Personal + Impersonal")
+	random_personal_cluster_trace = go.Scatter(x=training_sizes,
+						   y=[len(x) for x in random_personal_cluster_bests],
+						   name="Random Personal + Cluster")
 
-	data = [personal_trace, impersonal_trace, personal_impersonal_trace, personal_cluster_trace]
+	least_certain_personal_trace = go.Scatter(x=training_sizes,
+						 y=[len(x) for x in least_certain_personal_bests],
+						 name="Least Certain Personal")
+	least_certain_personal_impersonal_trace = go.Scatter(x=training_sizes,
+						   y=[len(x) for x in least_certain_personal_impersonal_bests],
+						   name="Least Certain Personal + Impersonal")
+	least_certain_personal_cluster_trace = go.Scatter(x=training_sizes,
+						   y=[len(x) for x in least_certain_personal_cluster_bests],
+						   name="Least Certain Personal + Cluster")
+
+	data = [impersonal_trace, \
+			random_personal_trace, \
+			random_personal_impersonal_trace, \
+			random_personal_cluster_trace,
+			least_certain_personal_trace, \
+			least_certain_personal_impersonal_trace, \
+			least_certain_personal_cluster_trace]
 	layout=go.Layout(title="WISDM V2 w/v1.1 training : #users who get the best performance from a model as the personal training set increases",
 				  yaxis=dict(range=[0,40],
 					  title="Number of users who get the best performance from this model"),

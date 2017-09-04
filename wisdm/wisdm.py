@@ -27,6 +27,22 @@ WISDM_TRANSFORMED = wisdm_transformed_v1
 data_df = None
 user_ids = None
 
+import time                                                
+
+def timeit(method):
+	number_of_cores = 32
+
+	def timed(*args, **kw):
+		ts = time.time()
+		result = method(*args, **kw)
+		te = time.time()
+
+		print("%s took %s minutes" % (method.__name__, (te-ts)/60.))
+
+		return result
+
+	return timed
+
 def make_labels_compatible(data_df):
 	class_labels = data_df['class'].unique()
 
@@ -351,6 +367,7 @@ def entropy_active_sampling(all_personal_features, all_personal_labels,
 								  impersonal_features, impersonal_labels, margin_size):
 	pass
 
+@timeit
 def sample_experiments(user_id, k_run, \
 					  impersonal_features, impersonal_labels, \
 					  potential_active_features, potential_active_labels, \
@@ -367,7 +384,7 @@ def sample_experiments(user_id, k_run, \
 		random_personal_scores = []
 		random_personal_plus_all_scores = []
 		random_personal_plus_cluster_scores = []
-		random_gc_scores = []
+		#random_gc_scores = []
 
 		# run impersonal model
 		impersonal_scaled_test_x = impersonal_scaler.transform(test_features)
@@ -398,10 +415,10 @@ def sample_experiments(user_id, k_run, \
 			random_personal_plus_cluster_scores.append(random_personal_plus_cluster_score)
 
 			# run garcia-ceja personalization approach
-			random_gc_score = garcia_ceja_model(sampled_active_features, sampled_active_labels,
-										impersonal_features, impersonal_labels,
-										test_features=test_features, test_labels=test_labels)
-			random_gc_scores.append(random_gc_score)
+			#random_gc_score = garcia_ceja_model(sampled_active_features, sampled_active_labels,
+			#							impersonal_features, impersonal_labels,
+			#								test_features=test_features, test_labels=test_labels)
+			#random_gc_scores.append(random_gc_score)
 
 		#least certain samples
 		least_certain_active_indeces = least_confident_active_sampling(potential_active_features, impersonal_model, ts)
@@ -424,9 +441,9 @@ def sample_experiments(user_id, k_run, \
 
 
 		# run garcia-ceja personalization approach
-		least_certain_gc_score = garcia_ceja_model(sampled_active_features, sampled_active_labels,
-									impersonal_features, impersonal_labels,
-									test_features=test_features, test_labels=test_labels)
+		#least_certain_gc_score = garcia_ceja_model(sampled_active_features, sampled_active_labels,
+		#							impersonal_features, impersonal_labels,
+		#							test_features=test_features, test_labels=test_labels)
 		
 		row = {"test user" : user_id,
 				   "k-run" : k_run,
@@ -436,27 +453,105 @@ def sample_experiments(user_id, k_run, \
 			   "impersonal score Mean" : impersonal_model_score,
 			   "random personal + impersonal score Mean" : np.mean(random_personal_plus_all_scores),
 			   "random personal + cluster score Mean" : np.mean(random_personal_plus_cluster_scores),
-			   "random Garcia-Ceja MM Mean" : np.mean(random_gc_scores),
+			   #"random Garcia-Ceja MM Mean" : np.mean(random_gc_scores),
 			   "least_certain personal score Mean" : least_certain_personal_score,
 			   "least_certain personal + impersonal score Mean" : least_certain_personal_plus_all_score,
 			   "least_certain personal + cluster score Mean" : least_certain_personal_plus_cluster_score,
-			   "least_certain Garcia-Ceja MM Mean" : least_certain_gc_score,
+			   #"least_certain Garcia-Ceja MM Mean" : least_certain_gc_score,
 			   }
 		print("\tamount of personal data : %s row" % ts)
 		print("\trandom personal model score : M=%.3f, SD=%.3f" % (row["random personal score Mean"], np.std(random_personal_scores)))
 		print("\timpersonal model score : M=%.3f" % (row["impersonal score Mean"]))
 		print("\trandom personal + ALL Impersonal : M=%.3f, SD=%.3f" % (row["random personal + impersonal score Mean"], np.std(random_personal_plus_all_scores)))
 		print("\trandom personal + CLUSTER Impersonal : M=%.3f, SD=%.3f" % (row["random personal + cluster score Mean"], np.std(random_personal_plus_cluster_scores)))
-		print("\trandom GC MM M=%.3f, SD=%.3f" % (row["random Garcia-Ceja MM Mean"], np.std(random_gc_scores)))
+		#print("\trandom GC MM M=%.3f, SD=%.3f" % (row["random Garcia-Ceja MM Mean"], np.std(random_gc_scores)))
 		print("\tleast_certain personal model score : %.3f" % (row["least_certain personal score Mean"]))
 		print("\tleast_certain personal + ALL Impersonal : %.3f" % (row["least_certain personal + impersonal score Mean"]))
 		print("\tleast_certain personal + CLUSTER Impersonal : %.3f" % (row["least_certain personal + cluster score Mean"]))
-		print("\tleast_certain GC MM %.3f" % (row["least_certain Garcia-Ceja MM Mean"]))
+		#print("\tleast_certain GC MM %.3f" % (row["least_certain Garcia-Ceja MM Mean"]))
 		print("\n")
 		rows.append(row)
 
 	user_scores_df = pd.DataFrame(rows)
 	return user_scores_df
+
+def pipeline1(version, output_path, user_ids, k=10, minimum_personal_samples=40, make_compatible=True):
+	# initialize pipeline variables
+	random_sample_iterations = 5
+	
+	training_sizes = [10,20,30,40,50,60,70,80,90,100]
+
+	with warnings.catch_warnings():
+		warnings.simplefilter("ignore")
+
+		# Train model with v1.1 data and get clusterings
+		set_data(version=version, make_compatible=make_compatible)
+
+		for ind, user_id in enumerate(user_ids): # iterate through the users holding one out for testing
+			user_results = []
+			print("Running user #%s: %s" % (ind, user_id))
+			personal_set = get_user_set(user_id)
+			personal_set = remove_all_nan(personal_set)
+
+			print("%s personal samples" % len(personal_set))
+
+			if len(personal_set) < minimum_personal_samples:
+				print("User %s has less than %s labeled samples..." % (user_id, minimum_personal_samples))
+				continue
+
+			personal_labels = np.array([t.decode("utf-8") for t in personal_set['class'].as_matrix()])
+			personal_features = personal_set.as_matrix(columns=[personal_set.columns[1:-1]])
+
+			# get impersonal data
+			impersonal_set = data_df[data_df['user'] != user_id]
+			impersonal_set = remove_all_nan(impersonal_set)
+			impersonal_labels = np.array([t.decode("utf-8") for t in impersonal_set['class'].as_matrix()])
+			impersonal_features = impersonal_set.as_matrix(columns=[impersonal_set.columns[1:-1]])
+
+			# train an impersonal model
+			impersonal_scaler = StandardScaler().fit(impersonal_features)
+			scaled_train_x = impersonal_scaler.transform(impersonal_features)
+
+			rfc_clf = weka_RF()
+			rfc_clf.fit(scaled_train_x, impersonal_labels)
+
+			# calibrated for probability estimation
+			prob_cal_cv_generator = StratifiedKFold(n_splits=3).split(impersonal_features,impersonal_labels)
+			prob_cal_clf = CalibratedClassifierCV(rfc_clf, cv=prob_cal_cv_generator, method='sigmoid')
+			prob_cal_clf.fit(scaled_train_x, impersonal_labels)
+
+			# create clusters
+			number_of_clusters = 4 # the higher this number is, the smaller we should expect each cluster to be
+
+			KM = KMeans(n_clusters=number_of_clusters)
+			clusters = KM.fit_predict(scaled_train_x)
+
+			# split personal data into training (potentially) and test
+			skf = StratifiedKFold(n_splits=k)
+			k_run = 0
+
+			for active_index, test_index in skf.split(personal_features, personal_labels):
+				print("\tRunning Fold #%s\n" % k_run)
+				# data set available for active labeling from the individual
+				all_active_features = personal_features[active_index]
+				all_active_labels = personal_labels[active_index]
+
+				# held out test set from individual
+				test_features = personal_features[test_index]
+				test_labels = personal_labels[test_index]
+			
+				k_run_df = sample_experiments(user_id, k_run,
+							  impersonal_features, impersonal_labels, \
+							  all_active_features, all_active_labels, \
+							  test_features, test_labels, \
+							  training_sizes, \
+							  random_sample_iterations, \
+							  impersonal_model=prob_cal_clf, impersonal_scaler=impersonal_scaler,
+							  KM=KM, clusters=clusters)
+				user_results.append(k_run_df)
+				k_run += 1
+			user_scores_df = pd.concat(user_results)
+			user_scores_df.to_pickle(output_path+user_id+".pickle")
 
 def pipeline2(output_path, user_ids, k=10, minimum_personal_samples=40):
 	# initialize pipeline variables
@@ -526,84 +621,6 @@ def pipeline2(output_path, user_ids, k=10, minimum_personal_samples=40):
 				test_labels = personal_labels[test_index]
 			
 				k_run_df = sample_experiments(user_id, k_run, 
-							  impersonal_features, impersonal_labels, \
-							  all_active_features, all_active_labels, \
-							  test_features, test_labels, \
-							  training_sizes, \
-							  random_sample_iterations, \
-							  impersonal_model=prob_cal_clf, impersonal_scaler=impersonal_scaler,
-							  KM=KM, clusters=clusters)
-				user_results.append(k_run_df)
-				k_run += 1
-			user_scores_df = pd.concat(user_results)
-			user_scores_df.to_pickle(output_path+user_id+".pickle")
-
-def pipeline1(version, output_path, user_ids, k=10, minimum_personal_samples=40, make_compatible=True):
-	# initialize pipeline variables
-	random_sample_iterations = 5
-	
-	training_sizes = [10,20,30,40,50,60,70,80,90,100]
-
-	with warnings.catch_warnings():
-		warnings.simplefilter("ignore")
-
-		# Train model with v1.1 data and get clusterings
-		set_data(version=version, make_compatible=make_compatible)
-
-		for ind, user_id in enumerate(user_ids): # iterate through the users holding one out for testing
-			user_results = []
-			print("Running user #%s: %s" % (ind, user_id))
-			personal_set = get_user_set(user_id)
-			personal_set = remove_all_nan(personal_set)
-
-			print("%s personal samples" % len(personal_set))
-
-			if len(personal_set) < minimum_personal_samples:
-				print("User %s has less than %s labeled samples..." % (user_id, minimum_personal_samples))
-				continue
-
-			personal_labels = np.array([t.decode("utf-8") for t in personal_set['class'].as_matrix()])
-			personal_features = personal_set.as_matrix(columns=[personal_set.columns[1:-1]])
-
-			# get impersonal data
-			impersonal_set = data_df[data_df['user'] != user_id]
-			impersonal_set = remove_all_nan(impersonal_set)
-			impersonal_labels = np.array([t.decode("utf-8") for t in impersonal_set['class'].as_matrix()])
-			impersonal_features = impersonal_set.as_matrix(columns=[impersonal_set.columns[1:-1]])
-
-			# train an impersonal model
-			impersonal_scaler = StandardScaler().fit(impersonal_features)
-			scaled_train_x = impersonal_scaler.transform(impersonal_features)
-
-			rfc_clf = weka_RF()
-			rfc_clf.fit(scaled_train_x, impersonal_labels)
-
-			# calibrated for probability estimation
-			prob_cal_cv_generator = StratifiedKFold(n_splits=3).split(impersonal_features,impersonal_labels)
-			prob_cal_clf = CalibratedClassifierCV(rfc_clf, cv=prob_cal_cv_generator, method='sigmoid')
-			prob_cal_clf.fit(scaled_train_x, impersonal_labels)
-
-			# create clusters
-			number_of_clusters = 4 # the higher this number is, the smaller we should expect each cluster to be
-
-			KM = KMeans(n_clusters=number_of_clusters)
-			clusters = KM.fit_predict(scaled_train_x)
-
-			# split personal data into training (potentially) and test
-			skf = StratifiedKFold(n_splits=k)
-			k_run = 0
-
-			for active_index, test_index in skf.split(personal_features, personal_labels):
-				print("\tRunning Fold #%s\n" % k_run)
-				# data set available for active labeling from the individual
-				all_active_features = personal_features[active_index]
-				all_active_labels = personal_labels[active_index]
-
-				# held out test set from individual
-				test_features = personal_features[test_index]
-				test_labels = personal_labels[test_index]
-			
-				k_run_df = sample_experiments(user_id, k_run,
 							  impersonal_features, impersonal_labels, \
 							  all_active_features, all_active_labels, \
 							  test_features, test_labels, \
