@@ -39,7 +39,7 @@ def get_results_dataframe(experiment_path):
 	results_df = pd.concat(results).reset_index(drop=True)
 	return results_df
 
-def accuracy_means_by_training_size():
+def accuracy_by_training_size():
 	training_sizes = [10,20,30,40,50,60,70,80,90,100]
 
 	random_personal_means = {}
@@ -399,7 +399,129 @@ def getBests(training_size):
 			users_benefit_from_random_personal_plus_cluster, \
 			users_benefit_from_least_certain_personal, \
 			users_benefit_from_least_certain_personal_plus_impersonal, \
-			users_benefit_from_least_certain_personal_plus_cluster, \
+			users_benefit_from_least_certain_personal_plus_cluster
+
+def plotUserBestsAreaStack():
+	training_sizes = [10,20,30,40,50,60,70,80,90,100]
+
+	impersonal_bests = []
+	random_personal_bests = []
+	random_personal_impersonal_bests = []
+	random_personal_cluster_bests = []
+	least_certain_personal_bests = []
+	least_certain_personal_impersonal_bests = []
+	least_certain_personal_cluster_bests = []
+
+	for ts in training_sizes:
+		impersonal, random_personal, random_personal_impersonal, random_personal_cluster, \
+			least_certain_personal, least_certain_personal_impersonal, least_certain_personal_cluster = getBests(ts)
+
+		impersonal_bests.append(impersonal)		
+		random_personal_bests.append(random_personal)
+		random_personal_impersonal_bests.append(random_personal_impersonal)
+		random_personal_cluster_bests.append(random_personal_cluster)
+		least_certain_personal_bests.append(least_certain_personal)
+		least_certain_personal_impersonal_bests.append(least_certain_personal_impersonal)
+		least_certain_personal_cluster_bests.append(least_certain_personal_cluster)
+
+		#print("Training Size : %s" % ts)
+		#print("\t personal : %s" % len(personal))
+		#print("\t impersonal : %s" % len(impersonal))
+		#print("\t personal + impersonal : %s" % len(personal_impersonal))
+		#print("\t personal + cluster : %s" % len(personal_cluster))   
+	impersonal_stack = [len(y) for y in impersonal_bests]
+	random_personal_stack = [len(y0)+len(y1) for y0,y1 in zip(impersonal_bests, random_personal_bests)]
+	random_personal_impersonal_stack = [y0+len(y1) for y0,y1 in \
+										zip(random_personal_stack, random_personal_impersonal_bests)]
+	random_personal_cluster_stack = [y0+len(y1) for y0,y1 in \
+									 zip(random_personal_impersonal_stack, random_personal_cluster_bests)]
+	least_certain_personal_stack = [y0+len(y1) for y0,y1 in \
+									 zip(random_personal_cluster_stack, least_certain_personal_bests)]
+	least_certain_personal_impersonal_stack = [y0+len(y1) for y0,y1 in \
+									 zip(least_certain_personal_stack, least_certain_personal_impersonal_bests)]
+	least_certain_personal_cluster_stack = [y0+len(y1) for y0,y1 in \
+									 zip(least_certain_personal_impersonal_stack, least_certain_personal_cluster_bests)]
+
+	impersonal_txt = [str(len(y)) for y in impersonal_bests]
+	random_personal_txt = [str(len(y)) for y in random_personal_bests]
+	random_personal_impersonal_txt = [str(len(y)) for y in random_personal_impersonal_bests]
+	random_personal_cluster_txt = [str(len(y)) for y in random_personal_cluster_bests]
+	least_certain_personal_txt = [str(len(y)) for y in least_certain_personal_bests]
+	least_certain_personal_impersonal_txt = [str(len(y)) for y in least_certain_personal_impersonal_bests]
+	least_certain_personal_cluster_txt = [str(len(y)) for y in least_certain_personal_cluster_bests]
+
+	impersonal_trace = go.Scatter(x=training_sizes,
+						   y=impersonal_stack,
+						   text=impersonal_txt,
+						   hoverinfo="x+text",
+						   mode='lines',
+						   line=dict(width=0.5),
+						   fill='tonexty',
+						   name="Impersonal")
+	random_personal_trace = go.Scatter(x=training_sizes,
+						 y=random_personal_stack,
+						   text=random_personal_txt,
+						   hoverinfo="x+text",
+						   mode='lines',
+						   line=dict(width=0.5),
+						   fill='tonexty',
+						 name="Random Personal")
+	random_personal_impersonal_trace = go.Scatter(x=training_sizes,
+						   y=random_personal_impersonal_stack,
+						   text=random_personal_impersonal_txt,
+						   hoverinfo="x+text",
+						   mode='lines',
+						   line=dict(width=0.5),
+						   fill='tonexty',
+						   name="Random Personal + Impersonal")
+	random_personal_cluster_trace = go.Scatter(x=training_sizes,
+						   y=random_personal_cluster_stack,
+						   text=impersonal_txt,
+						   hoverinfo="x+text",
+						   mode='lines',
+						   line=dict(width=0.5),
+						   fill='tonexty',
+						   name="Random Personal + Cluster")
+
+	least_certain_personal_trace = go.Scatter(x=training_sizes,
+						 y=least_certain_personal_stack,
+						   text=least_certain_personal_txt,
+						   hoverinfo="x+text",
+						   mode='lines',
+						   line=dict(width=0.5),
+						   fill='tonexty',
+						 name="Least Certain Personal")
+	least_certain_personal_impersonal_trace = go.Scatter(x=training_sizes,
+						   y=least_certain_personal_impersonal_stack,
+						   text=least_certain_personal_impersonal_txt,
+						   hoverinfo="x+text",
+						   mode='lines',
+						   line=dict(width=0.5),
+						   fill='tonexty',
+						   name="Least Certain Personal + Impersonal")
+	least_certain_personal_cluster_trace = go.Scatter(x=training_sizes,
+						   y=least_certain_personal_cluster_stack,
+						   text=least_certain_personal_cluster_txt,
+						   hoverinfo="x+text",
+						   mode='lines',
+						   line=dict(width=0.5),
+						   fill='tonexty',
+						   name="Least Certain Personal + Cluster")
+
+	data = [impersonal_trace, \
+			random_personal_trace, \
+			random_personal_impersonal_trace, \
+			random_personal_cluster_trace,
+			least_certain_personal_trace, \
+			least_certain_personal_impersonal_trace, \
+			least_certain_personal_cluster_trace]
+
+	layout=go.Layout(title="WISDM V2 w/v1.1 training : #users who get the best performance from a model as the personal training set increases",
+				  yaxis=dict(title="Number of users who get the best performance from this model"),
+				  xaxis=dict(title="Amount of personal training data or user training burden"))
+	fig = go.Figure(data=data, layout=layout)
+	return fig
+
 
 def plotUserBests():
 	training_sizes = [10,20,30,40,50,60,70,80,90,100]
@@ -466,3 +588,108 @@ def plotUserBests():
 				  xaxis=dict(title="Amount of personal training data or user training burden"))
 	fig = go.Figure(data=data, layout=layout)
 	return fig
+
+def get_performance_means(results_df, sampling_method='random'):
+	test_user_ids = results_df['test user'].unique()
+	training_sizes = results_df['personal training data'].unique()
+	personal_models = ['personal', 'personal + impersonal', 'personal + cluster']
+	models_dict = {}
+	
+	# get impersonal scores
+	models_dict['impersonal'] = {}
+
+	for user_id in test_user_ids:
+		impersonal_accuracies = results_df[(results_df['test user'] == user_id) & (results_df['personal training data'] == 10)]['impersonal score Mean']
+
+		models_dict['impersonal'][user_id] = np.mean(impersonal_accuracies)
+
+	for model in personal_models:
+		model_dict = {'training_sizes' : {}}
+					  
+		for ts in training_sizes:
+			model_dict['training_sizes'][ts] = {}
+			for user_id in test_user_ids:
+				column_name = "%s %s score Mean" % (sampling_method, model)
+				user_model_series = results_df[(results_df['personal training data'] == ts) & \
+						   (results_df['test user'] == user_id)][column_name]
+				model_dict['training_sizes'][ts][user_id] = user_model_series.mean()
+		models_dict[model] = model_dict
+	return models_dict
+
+def plot_accuracies_by_training_size_and_user_scatter(results_df, user_id, training_sizes = [10,20,30,40,50,60,70,80,90,100], \
+														sampling_method='random'):
+	models_dict = get_performance_means(results_df, sampling_method=sampling_method)
+	
+	traces = []
+	for model, data in models_dict.items():
+		if model != "impersonal":
+			#print("%s" % model)
+			means = []
+			for ts in training_sizes:
+				mean_accuracy = data['training_sizes'][ts][user_id]
+				#print("\t%s personal : %s" % (ts, mean))
+				means.append(mean_accuracy)
+			#print(means)
+			#print(training_sizes)
+			trace = go.Scatter(y=means,
+							   x=training_sizes,
+							   name=model)
+			traces.append(trace)
+		else:
+			#print("%s" % model)
+			mean = data[user_id]
+			trace = go.Scatter(y=[mean]*len(training_sizes),
+							   x=training_sizes,
+							   name=model)
+			traces.append(trace)
+			#print("\t%s personal : %s" % (0, mean))
+		
+	layout = go.Layout(showlegend=True,
+			yaxis=dict(title="Accuracy in %", range=[0,1.0]),
+			xaxis=dict(title="Amount of training data or training burden to the user"))
+	
+	fig = go.Figure(data=traces, layout=layout)
+	return fig
+
+def plot_accuracies_by_training_size_scatter(results_df, training_sizes = [10,20,30,40,50,60,70,80,90,100], \
+											aggregation_method=np.mean, sampling_method='random'):
+	models_dict = get_performance_means(results_df, sampling_method=sampling_method)
+	traces = []
+	for model, data in models_dict.items():
+		if model != "impersonal":
+			#print("%s" % model)
+			means = []
+			for ts in training_sizes:
+				mean = aggregation_method([v for v in data['training_sizes'][ts].values()])
+				#print("\t%s personal : %s" % (ts, mean))
+				means.append(mean)
+			#print(means)
+			#print(training_sizes)
+			trace = go.Scatter(y=means,
+							   x=training_sizes,
+							   name=model)
+			traces.append(trace)
+		else:
+			#print("%s" % model)
+			mean = aggregation_method([v for v in data.values()])
+			trace = go.Scatter(y=[mean]*len(training_sizes),
+				   x=training_sizes,
+				   name=model)
+			traces.append(trace)
+			#print("\t%s personal : %s" % (0, mean))
+		
+	layout = go.Layout(showlegend=True,
+			yaxis=dict(title="Accuracy in %", range=[0,1.0]),
+			xaxis=dict(title="Amount of training data or training burden to the user"))
+	
+	fig = go.Figure(data=traces, layout=layout)
+	return fig
+
+def percentile_50(arr):
+	return np.percentile(arr, 50)
+def percentile_25(arr):
+	return np.percentile(arr, 25)
+def percentile_20(arr):
+	return np.percentile(arr, 20)
+def percentile_10(arr):
+	return np.percentile(arr, 10)

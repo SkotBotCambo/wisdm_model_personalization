@@ -97,7 +97,7 @@ def get_demographics():
 	return demo_df
 
 def get_random_user_set(n):
-	random_indeces = np.random.choice(len(user_ids), n)
+	random_indeces = np.random.choice(len(user_ids), n, replace=False)
 	random_ids = [user_ids[r] for r in random_indeces]
 	df_set = data_df[data_df['user'].isin(random_ids)]
 	return df_set
@@ -338,6 +338,9 @@ def garcia_ceja_model(active_features, active_labels, \
 # uncertainty sampling methods
 def least_confident_active_sampling(all_personal_features, model, number_of_samples):
 	'''returns an array of length, number_of_samples, representing which indeces of the personal features to sample'''
+	if number_of_samples > len(all_personal_features):
+		raise ValueError('The number of personal samples provided (%s) is less than the number of least-certain samples requested(%s)' % (len(all_personal_features), number_of_samples))
+
 	probabilities = model.predict_proba(all_personal_features)
 	uniform_prob = 1. / len(model.classes_)
 	diffs_from_uniform = []
@@ -392,7 +395,11 @@ def sample_experiments(user_id, k_run, \
 
 		for run in range(random_sample_iterations):
 			# get random samples
-			random_active_indeces = np.random.choice(len(potential_active_features), ts)
+			try:
+				random_active_indeces = np.random.choice(len(potential_active_features), ts, replace=False)
+			except ValueError as ve:
+				if """Cannot take a larger sample than population when 'replace=False'""" in ve.args[0]:
+					continue
 			sampled_active_features = potential_active_features[random_active_indeces]
 			sampled_active_labels = potential_active_labels[random_active_indeces]
 
@@ -421,7 +428,12 @@ def sample_experiments(user_id, k_run, \
 			#random_gc_scores.append(random_gc_score)
 
 		#least certain samples
-		least_certain_active_indeces = least_confident_active_sampling(potential_active_features, impersonal_model, ts)
+		try:
+			least_certain_active_indeces = least_confident_active_sampling(potential_active_features, impersonal_model, ts)
+		except ValueError as ve:
+			if "The number of personal samples provided" in ve.args[0]:
+				print("Can't evaluate participant #%s with %s personal labels..."%(user_id, ts))
+				continue
 		sampled_active_features = potential_active_features[least_certain_active_indeces]
 		sampled_active_labels = potential_active_labels[least_certain_active_indeces]
 
