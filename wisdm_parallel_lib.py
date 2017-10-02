@@ -2,7 +2,7 @@ import sys
 import pandas as pd
 import time
 
-temporary_dataframes_locations = "./datasets/WISDM_v2/temporary_user_dataframes/"
+temporary_dataframes_locations = "/home/sac086/wisdm_model_personalization/datasets/WISDM_v2/temporary_user_dataframes/"
 
 def assign_segments_by_user(user_id, user_df, windowSize=10):
 	td = pd.Timedelta(str(windowSize) + ' seconds')
@@ -37,7 +37,7 @@ def assign_segments_by_user(user_id, user_df, windowSize=10):
 		segment_df = user_df[(user_df['timestamp'] > beginning_of_segment) & \
 					  (user_df['timestamp'] < end_of_segment)]
 	finish_time = time.time()
-	print("finished in %s seconds" % (finish_time - start_time))
+	print("\tfinished in %s seconds" % (finish_time - start_time))
 	user_df['segment_id'] = segment_col
 	return user_df
 
@@ -46,4 +46,6 @@ def segment_users(user_dfs):
 		user_df = assign_segments_by_user(user_id, user_df)
 		file_loc_name = temporary_dataframes_locations + user_id+"_raw_segmented.pickle"
 		print("\tSaving dataframe...")
-		user_df.to_pickle(file_loc_names)
+		user_df.to_pickle(file_loc_name)
+		print("\tSaved.")
+		print("")
